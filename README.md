@@ -216,7 +216,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
-## 📬 Team - Cipher Agents
+## 📬 Team - CIPHER AGENTS
 
 1. Himanshu Bansal - [GitHub](https://github.com/thehimanshubansal)
 2. Prasoon Sharma - [GitHub](https://github.com/Prof-chaos-5)
