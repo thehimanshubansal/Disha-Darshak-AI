@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -6,14 +5,21 @@ import SkillAssessmentForm from './skill-assessment-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
+import { useAppContext } from '@/contexts/app-context';
 
 export default function PathFinder() {
-  const [assessmentStarted, setAssessmentStarted] = useState(false);
+  const { skillAssessmentState, handleClearAssessmentState } = useAppContext();
+  const [showStartScreen, setShowStartScreen] = useState(!skillAssessmentState.isFinished);
+
+  const handleStart = () => {
+    handleClearAssessmentState();
+    setShowStartScreen(false);
+  }
 
   const panelVariants = {
-    hidden: { opacity: 0, x: 100 },
-    visible: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -100 },
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -20 },
   };
 
   const StartScreen = () => (
@@ -55,7 +61,7 @@ export default function PathFinder() {
           <p className="text-sm text-muted-foreground mb-6">
             This quick assessment will help us understand your skills, interests, and career motivations. Your responses will be used to generate tailored recommendations to guide your professional journey.
           </p>
-          <Button onClick={() => setAssessmentStarted(true)} size="lg">
+          <Button onClick={handleStart} size="lg">
             Start Assessment <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </CardContent>
@@ -66,7 +72,7 @@ export default function PathFinder() {
   return (
     <div className="space-y-6"> 
       <AnimatePresence mode="wait">
-        {!assessmentStarted ? (
+        {showStartScreen ? (
           <StartScreen />
         ) : (
           <motion.div

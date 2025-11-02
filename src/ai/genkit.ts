@@ -36,9 +36,7 @@ export const FLASH_MODEL = "vertexai/gemini-2.5-flash";
 export const PRO_MODEL = "vertexai/gemini-2.5-pro";
 
 // --- TTS Voices (from Cloud Text-to-Speech API) ---
-const FEMALE_VOICES = [
-  'en-IN-Wavenet-A'
-];
+const INDIAN_FEMALE_VOICE = 'en-IN-Wavenet-D';
 
 // ---------- Wrappers ----------
 export async function generateWithFlash(prompt: any, options?: Record<string, unknown>): Promise<AIResult> {
@@ -64,21 +62,18 @@ export async function generateTTS(text: string): Promise<TTSResult> {
   // 1. Instantiate a client
   const client = new TextToSpeechClient();
 
-  // 2. Select a random voice
-  const randomVoice = FEMALE_VOICES[Math.floor(Math.random() * FEMALE_VOICES.length)];
-
-  // 3. Construct the request payload
+  // 2. Construct the request payload with the Indian female voice
   const request = {
     input: { text: text },
-    voice: { languageCode: 'en-IN', name: randomVoice },
+    voice: { languageCode: 'en-IN', name: INDIAN_FEMALE_VOICE },
     audioConfig: { audioEncoding: 'MP3' as const },
   };
 
   try {
-    // 4. Perform the text-to-speech request
+    // 3. Perform the text-to-speech request
     const [response] = await client.synthesizeSpeech(request);
     
-    // 5. Get the audio content and convert it to a base64 string
+    // 4. Get the audio content and convert it to a base64 string
     const audioContent = response.audioContent;
     if (audioContent instanceof Uint8Array) {
         const audioBase64 = Buffer.from(audioContent).toString('base64');

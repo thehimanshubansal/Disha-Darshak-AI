@@ -16,7 +16,7 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
           'border-r border-white/10 bg-card/50 backdrop-blur-lg',
           'transition-all duration-300 ease-in-out',
           collapsed ? 'w-20' : 'w-64',
-          'hidden md:flex flex-col'
+          'hidden md:flex flex-col z-20'
         )}
       >
         <nav className="flex-1 p-3 space-y-2">

@@ -1,4 +1,3 @@
-
 'use client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,11 +56,11 @@ export default function Header({ onToggleDesktopSidebar, desktopSidebarCollapsed
           </>
         )}
 
-        <div className="font-headline font-bold tracking-tight text-xl md:text-2xl">
+        <button onClick={() => handleNavigate('home')} className="font-headline font-bold tracking-tight text-xl md:text-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
           <span className="text-foreground">Disha</span>
           <span className="text-primary">Darshak</span>
           <span className="text-foreground"> AI</span>
-        </div>
+        </button>
         <Badge className="hidden lg:inline-flex" variant="secondary">
           Personalized Career Advisor
         </Badge>

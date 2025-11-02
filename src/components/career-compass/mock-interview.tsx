@@ -1,9 +1,7 @@
-// src/components/career-compass/mock-interview.tsx
-
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, CheckCircle, Award, BrainCircuit, Mic, Send, Upload, FileText, X } from 'lucide-react';
+import { Bot, CheckCircle, Award, BrainCircuit, Mic, Send, Upload, FileText, X, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import VoiceInterviewUI from './voice-interview-ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { FIELDS_OF_INTEREST, findFieldDetails } from '@/lib/fields-of-interest';
+
 
 type Message = {
   role: 'user' | 'bot';
@@ -24,151 +22,124 @@ type Message = {
 
 type InterviewState = 'setup' | 'interviewing' | 'finished';
 
-type ResumeAnalysis = {
-  name: string;
-  job_role: string;
-  focus_field: string;
-  summary?: string;
-};
-
 interface InterviewContext {
   resumeText: string;
   candidateName: string;
   jobRole: string;
   difficulty: 'easy' | 'intermediate' | 'hard';
-  focusCategory: string;
   focusField: string;
 }
 
+const fieldsList = [ "Technology", "Software Development", "Data Science & Analytics", "AI & Machine Learning", "Cybersecurity", "Cloud Computing & DevOps", "IT Infrastructure & Networking", "UX/UI Design", "Business", "Finance & Accounting", "Healthcare", "Creative Arts", "Engineering (Core)" ];
+
+const fieldToJobRolePlaceholder: { [key: string]: string } = { 
+    "Technology": "e.g., Software Engineer", 
+    "Software Development": "e.g., Frontend Developer",
+    "Data Science & Analytics": "e.g., Data Scientist", 
+    "AI & Machine Learning": "e.g., ML Engineer",
+    "Cybersecurity": "e.g., Security Analyst",
+    "Cloud Computing & DevOps": "e.g., DevOps Engineer",
+    "IT Infrastructure & Networking": "e.g., Network Engineer",
+    "UX/UI Design": "e.g., Product Designer",
+    "Business": "e.g., Business Analyst",
+    "Finance & Accounting": "e.g., Financial Analyst",
+    "Healthcare": "e.g., Healthcare IT Specialist",
+    "Creative Arts": "e.g., Graphic Designer",
+    "Engineering (Core)": "e.g., Mechanical Engineer",
+};
+
 export default function MockInterview() {
-  const { resumeText: appResumeText, user, setResumeText } = useAppContext();
+  const { user, mockInterviewState, setMockInterviewState, handleClearMockInterviewState, refreshEvaluations, setResumeText, startChatWithEvaluationContext, setIsInterviewActive } = useAppContext();
   const { toast } = useToast();
-  const [state, setState] = useState<InterviewState>('setup');
+  
+  const [isInterviewing, setIsInterviewing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const [candidateName, setCandidateName] = useState('');
-  const [jobRole, setJobRole] = useState('');
-  const [jobRolePlaceholder, setJobRolePlaceholder] = useState('e.g., Software Engineer');
-  const [difficulty, setDifficulty] = useState<'easy' | 'intermediate' | 'hard'>('intermediate');
   
-  const [selectedCategory, setSelectedCategory] = useState<keyof typeof FIELDS_OF_INTEREST>("Software Engineering");
-  // --- MODIFICATION START ---
-  const [selectedField, setSelectedField] = useState<string | null>(null);
-  // --- MODIFICATION END ---
-  
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [resumeAnalysis, setResumeAnalysis] = useState<ResumeAnalysis | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string>('');
-
   const [messages, setMessages] = useState<Message[]>([]);
   const [history, setHistory] = useState<any[]>([]);
-  const [evaluation, setEvaluation] = useState<InterviewEvaluation | null>(null);
   
   const interviewContextRef = useRef<InterviewContext | null>(null);
+  
+  const [jobRolePlaceholder, setJobRolePlaceholder] = useState('e.g., Enter job role');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  // This cleanup effect ensures the main UI is restored if the user navigates away
   useEffect(() => {
-    if (user) {
-      setCandidateName(user.name);
-      const userFieldDetails = findFieldDetails(user.fieldOfInterest);
-      if (userFieldDetails) {
-        setSelectedCategory(userFieldDetails.category as keyof typeof FIELDS_OF_INTEREST);
-        setSelectedField(userFieldDetails.field);
-        setJobRolePlaceholder(FIELDS_OF_INTEREST[userFieldDetails.category as keyof typeof FIELDS_OF_INTEREST].placeholder);
-      } else {
-        const defaultCategory = "Software Engineering";
-        setSelectedCategory(defaultCategory);
-        // --- MODIFICATION START ---
-        setSelectedField(null);
-        // --- MODIFICATION END ---
-        setJobRolePlaceholder(FIELDS_OF_INTEREST[defaultCategory].placeholder);
-      }
-    } else {
-        const defaultCategory = "Software Engineering";
-        setSelectedCategory(defaultCategory);
-        setSelectedField(null);
-        setJobRolePlaceholder(FIELDS_OF_INTEREST[defaultCategory].placeholder);
+    return () => {
+      setIsInterviewActive(false);
+    };
+  }, [setIsInterviewActive]);
+
+
+  const handleFieldChange = (newField: string) => {
+    setMockInterviewState({ field: newField });
+    setJobRolePlaceholder(fieldToJobRolePlaceholder[newField] || 'e.g., Enter job role');
+    if (!mockInterviewState.resumeAnalysis) {
+        setMockInterviewState({ jobRole: '' });
     }
-  }, [user]);
-
-  useEffect(() => { 
-    return () => { if (pdfPreviewUrl) { URL.revokeObjectURL(pdfPreviewUrl); } }; 
-  }, [pdfPreviewUrl]);
-
-  const handleCategoryChange = (newCategoryKey: string) => {
-    const newCategory = newCategoryKey as keyof typeof FIELDS_OF_INTEREST;
-    setSelectedCategory(newCategory);
-    // --- MODIFICATION START ---
-    setSelectedField(null);
-    // --- MODIFICATION END ---
-    setJobRole('');
-    setJobRolePlaceholder(FIELDS_OF_INTEREST[newCategory].placeholder || 'e.g., Enter job role');
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.type !== 'application/pdf' || file.size > 5 * 1024 * 1024) {
-        setError('Please upload a PDF file under 5MB.');
-        return;
-      }
-      setUploadedFile(file);
-      setError('');
-      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
-      setPdfPreviewUrl(URL.createObjectURL(file));
-      analyzeResumeFile(file);
+      processFile(file);
     }
   };
+  
+  const processFile = async (file: File) => {
+    if (file.type !== 'application/pdf' || file.size > 5 * 1024 * 1024) {
+      setError('Please upload a PDF file under 5MB.');
+      return;
+    }
+    setError('');
 
-  const analyzeResumeFile = async (file: File) => {
-    setAnalyzing(true);
+    const newPreviewUrl = URL.createObjectURL(file);
+    // Clear any previous evaluation when a new file is uploaded
+    setMockInterviewState({ uploadedFile: file, pdfPreviewUrl: newPreviewUrl, resumeAnalysis: null, evaluation: null });
+    setIsAnalyzing(true);
+    
     try {
       const formData = new FormData();
       formData.append('file', file);
       const analysis = await analyzeResume({ file: formData });
-      setResumeAnalysis(analysis);
-      setCandidateName(analysis.name);
-      setJobRole(analysis.job_role);
-      
-      const fieldDetails = findFieldDetails(analysis.focus_field);
-      if (fieldDetails) {
-          handleCategoryChange(fieldDetails.category);
-          setSelectedField(fieldDetails.field);
-      }
-      
+      setMockInterviewState({
+        resumeAnalysis: analysis,
+        candidateName: analysis.name,
+      });
       if (analysis.summary) setResumeText(analysis.summary);
     } catch (error: any) {
       setError('Failed to analyze resume.');
     } finally {
-      setAnalyzing(false);
+      setIsAnalyzing(false);
     }
   };
 
-  const removeUploadedFile = () => {
-    setUploadedFile(null);
-    setResumeAnalysis(null);
-    if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
-    setPdfPreviewUrl('');
-  };
-
   const startInterview = async () => {
-    setLoading(true); setError(''); setMessages([]); setHistory([]); setEvaluation(null);
+    const { jobRole, field, difficulty, resumeAnalysis, candidateName } = mockInterviewState;
+
+    if (!jobRole || !field || !difficulty) {
+      setError('Please fill all required fields to start.');
+      return;
+    }
+    setIsInterviewActive(true); // <-- HIDE MAIN UI
+    setLoading(true); 
+    setError(''); 
+    setMessages([]); 
+    setHistory([]);
+    setMockInterviewState({ evaluation: null });
 
     const fullResumeText = resumeAnalysis 
       ? `CANDIDATE PROFILE:\nName: ${resumeAnalysis.name}\nTarget Role: ${resumeAnalysis.job_role}\nFocus Area: ${resumeAnalysis.focus_field}\n\nBACKGROUND:\n${resumeAnalysis.summary || ''}`
-      : appResumeText || 'No resume provided';
+      : 'No resume provided';
       
-    // --- MODIFICATION START ---
     interviewContextRef.current = {
       resumeText: fullResumeText,
       candidateName: candidateName || 'Candidate',
       jobRole,
       difficulty,
-      focusCategory: selectedCategory,
-      focusField: selectedField || selectedCategory, // Use category if field is not selected
+      focusField: field,
     };
-    // --- MODIFICATION END ---
     
     try {
       const response = await conductInterview({
@@ -178,9 +149,10 @@ export default function MockInterview() {
       });
       setMessages([{ role: 'bot', text: response.question }]);
       setHistory(response.history);
-      setState('interviewing');
+      setIsInterviewing(true);
     } catch (e: any) {
       setError('Failed to start the interview. The AI service may be busy.');
+      setIsInterviewActive(false); // <-- RESTORE UI ON ERROR
     } finally {
       setLoading(false);
     }
@@ -201,8 +173,9 @@ export default function MockInterview() {
       });
 
       if (response.evaluation) {
-        setEvaluation(response.evaluation);
-        setState('finished');
+        setMockInterviewState({ evaluation: response.evaluation });
+        setIsInterviewing(false);
+        setIsInterviewActive(false); // <-- RESTORE MAIN UI
         
         if (user) {
             await evaluationService.saveInterview(user.uid, { 
@@ -212,6 +185,7 @@ export default function MockInterview() {
                 evaluation: response.evaluation, 
                 history: response.history 
             });
+            await refreshEvaluations();
         }
         
         toast({ title: "Interview Finished", description: "Your evaluation has been saved." });
@@ -234,100 +208,87 @@ export default function MockInterview() {
     await handleSend("Please end the interview and provide my evaluation.");
   }
 
+  const handleInsight = () => {
+    if (!mockInterviewState.evaluation || !interviewContextRef.current) return;
+    startChatWithEvaluationContext({
+        type: 'Mock Interview',
+        inputs: {
+            jobRole: interviewContextRef.current.jobRole,
+            field: interviewContextRef.current.focusField,
+            difficulty: interviewContextRef.current.difficulty,
+        },
+        result: mockInterviewState.evaluation,
+        resumeText: interviewContextRef.current.resumeText,
+    });
+  };
+
   const renderSetup = () => (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="shadow-sm">
             <CardHeader>
                 <CardTitle className="font-headline text-2xl md:text-3xl">AI Mock Interview</CardTitle>
-                <CardDescription>Upload your resume and select your field to begin a personalized session.</CardDescription>
+                <CardDescription>Set the parameters for your interview session.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
-                    <label className="text-sm font-medium">Upload Resume (Required)</label>
-                    <div 
-                        onClick={() => document.getElementById('resume-upload-mock')?.click()}
-                        className="mt-1 flex justify-center rounded-lg border border-dashed border-muted-foreground/30 px-6 py-10 cursor-pointer hover:border-primary transition-colors"
-                    >
-                        <div className="text-center">
-                            <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                            <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                                <span className="font-semibold text-primary">Upload a file</span> or drag and drop
-                            </p>
-                            <p className="text-xs leading-5 text-muted-foreground">PDF up to 5MB</p>
+                    <label className="text-sm font-medium">Upload Resume</label>
+                    <p className="text-xs text-muted-foreground -mt-1 mb-2">This will tailor questions to your experience.</p>
+                    {!mockInterviewState.uploadedFile ? (
+                        <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                            <input type="file" accept=".pdf" onChange={handleFileUpload} className="hidden" id="resume-upload" />
+                            <label htmlFor="resume-upload" className="cursor-pointer">
+                                <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                                <p className="text-sm text-muted-foreground">Upload a PDF resume (Max 5MB)</p>
+                            </label>
                         </div>
-                        <input id="resume-upload-mock" name="resume-upload-mock" type="file" className="sr-only" onChange={handleFileUpload} accept=".pdf" />
-                    </div>
-                    {analyzing && <p className="text-sm text-center text-muted-foreground animate-pulse">Analyzing resume...</p>}
-                    {uploadedFile && !analyzing && (
-                        <div className="flex items-center justify-between text-sm text-muted-foreground border p-2 rounded-md">
-                            <div className="flex items-center gap-2 truncate">
-                                <FileText className="h-4 w-4 shrink-0" />
-                                <span className="font-medium text-foreground truncate">{uploadedFile.name}</span>
+                    ) : (
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                            <div className="flex items-center gap-2">
+                                <FileText className="h-5 w-5 text-primary" />
+                                <div>
+                                    <p className="text-sm font-medium">{mockInterviewState.uploadedFile.name}</p>
+                                    {isAnalyzing && <p className="text-xs text-muted-foreground">Analyzing...</p>}
+                                    {mockInterviewState.resumeAnalysis && !isAnalyzing && <p className="text-xs text-green-600">✓ Analyzed</p>}
+                                </div>
                             </div>
-                            <Button variant="ghost" size="icon" onClick={removeUploadedFile} className="h-6 w-6 shrink-0">
-                                <X className="h-4 w-4" />
-                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setMockInterviewState({ uploadedFile: null, pdfPreviewUrl: '', resumeAnalysis: null, jobRole: '', field: '' })} className="h-8 w-8 p-0"> <X className="h-4 w-4" /> </Button>
                         </div>
                     )}
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Field of Interest</label>
-                        <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-                            <SelectTrigger><SelectValue placeholder="Select a field" /></SelectTrigger>
-                            <SelectContent>{Object.keys(FIELDS_OF_INTEREST).map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
-                        </Select>
-                    </div>
-                    {/* --- MODIFICATION START --- */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Specialization</label>
-                        <Select value={selectedField || ''} onValueChange={setSelectedField}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a specialization (optional)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {FIELDS_OF_INTEREST[selectedCategory]?.subFields.map((field) => (
-                                    <SelectItem key={field} value={field}>{field}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    {/* --- MODIFICATION END --- */}
-                </div>
-
                 <div className="space-y-2">
-                    <label className="text-sm font-medium">Target Job Role</label>
-                    <Input placeholder={jobRolePlaceholder} value={jobRole} onChange={(e) => setJobRole(e.target.value)} />
+                    <label className="text-sm font-medium">Field / Industry *</label>
+                     <Select value={mockInterviewState.field} onValueChange={handleFieldChange}>
+                        <SelectTrigger><SelectValue placeholder="Select a field" /></SelectTrigger>
+                        <SelectContent>{fieldsList.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+                    </Select>
                 </div>
                 <div className="space-y-2">
-                    <label className="text-sm font-medium">Difficulty Level</label>
+                    <label className="text-sm font-medium">Job Role *</label>
+                    <Input placeholder={jobRolePlaceholder} value={mockInterviewState.jobRole} onChange={(e) => setMockInterviewState({ jobRole: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Difficulty Level *</label>
                     <div className="grid grid-cols-3 gap-2">
-                        <Button variant={difficulty === 'easy' ? 'default' : 'outline'} onClick={() => setDifficulty('easy')}>Easy</Button>
-                        <Button variant={difficulty === 'intermediate' ? 'default' : 'outline'} onClick={() => setDifficulty('intermediate')}>Intermediate</Button>
-                        <Button variant={difficulty === 'hard' ? 'default' : 'outline'} onClick={() => setDifficulty('hard')}>Hard</Button>
+                        <Button variant={mockInterviewState.difficulty === 'easy' ? 'default' : 'outline'} onClick={() => setMockInterviewState({ difficulty: 'easy' })}>Easy</Button>
+                        <Button variant={mockInterviewState.difficulty === 'intermediate' ? 'default' : 'outline'} onClick={() => setMockInterviewState({ difficulty: 'intermediate' })}>Intermediate</Button>
+                        <Button variant={mockInterviewState.difficulty === 'hard' ? 'default' : 'outline'} onClick={() => setMockInterviewState({ difficulty: 'hard' })}>Hard</Button>
                     </div>
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
-                <Button onClick={startInterview} disabled={loading || !jobRole || !resumeAnalysis}>
-                  {loading ? "Initializing..." : "Start Interview"}
-                </Button>
+                <Button onClick={startInterview} disabled={loading || isAnalyzing || !mockInterviewState.jobRole || !mockInterviewState.field || !mockInterviewState.difficulty}> {loading ? "Initializing..." : "Start Interview"} </Button>
             </CardContent>
         </Card>
         <AnimatePresence>
-            {pdfPreviewUrl && (
-                <motion.div 
-                    className="h-[70vh] lg:h-auto"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                >
-                    <Card className="h-full">
+            {mockInterviewState.pdfPreviewUrl && (
+                <motion.div key="resume-preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                     <Card className="h-full min-h-[75vh]">
                         <CardHeader>
                             <CardTitle className="font-headline">Resume Preview</CardTitle>
+                            <CardDescription>{mockInterviewState.uploadedFile?.name}</CardDescription>
                         </CardHeader>
-                        <CardContent className="h-[calc(100%-60px)]">
-                            <iframe src={pdfPreviewUrl} className="w-full h-full rounded-md border" title="Resume Preview"/>
+                        <CardContent className="h-[calc(100%-78px)]">
+                            <iframe src={mockInterviewState.pdfPreviewUrl} className="w-full h-full rounded-md border" title="Resume Preview" />
                         </CardContent>
                     </Card>
                 </motion.div>
@@ -338,15 +299,18 @@ export default function MockInterview() {
 
   const renderInterviewing = () => ( <VoiceInterviewUI messages={messages} loading={loading} onSend={handleSend} onEnd={endInterview} /> );
 
-  const renderFinished = () => (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="shadow-sm max-w-4xl mx-auto">
-            <CardHeader>
-                <CardTitle className="font-headline flex items-center gap-2"> <CheckCircle className="h-6 w-6 text-green-500"/> Interview Complete! </CardTitle>
-                <CardDescription>Here is your detailed evaluation.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                {evaluation && (
+  const renderFinished = () => {
+      const { evaluation } = mockInterviewState;
+      if (!evaluation) return null;
+
+      return (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            <Card className="shadow-sm max-w-4xl mx-auto">
+                <CardHeader>
+                    <CardTitle className="font-headline flex items-center gap-2"> <CheckCircle className="h-6 w-6 text-green-500"/> Interview Complete! </CardTitle>
+                    <CardDescription>Here is your detailed evaluation.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Card className='bg-muted/50'>
                             <CardHeader> <CardTitle className='text-lg font-bold flex items-center gap-2'><Award className='h-5 w-5 text-primary' /> Final Evaluation</CardTitle> </CardHeader>
@@ -389,18 +353,27 @@ export default function MockInterview() {
                             </CardContent>
                         </Card>
                     </div>
-                )}
-                <Button onClick={() => { setState('setup'); setEvaluation(null); }} className="w-full">Start New Interview</Button>
-            </CardContent>
-        </Card>
-    </motion.div>
-  );
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <Button onClick={handleInsight}>
+                            <MessageSquare className="mr-2 h-4 w-4" /> Get more AI insight
+                        </Button>
+                        <Button onClick={handleClearMockInterviewState} variant="outline">Start New Interview</Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </motion.div>
+      )
+  };
+
+  const renderContent = () => {
+    if (mockInterviewState.evaluation) return renderFinished();
+    if (isInterviewing) return renderInterviewing();
+    return renderSetup();
+  }
 
   return (
     <div className='space-y-6'>
-      {state === 'setup' && renderSetup()}
-      {state === 'interviewing' && renderInterviewing()}
-      {state === 'finished' && renderFinished()}
+      {renderContent()}
     </div>
   );
 }

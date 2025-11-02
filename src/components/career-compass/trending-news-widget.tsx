@@ -1,9 +1,6 @@
-
 'use client';
-import { useEffect, useState } from 'react';
-import Image from 'next/image';
-import { newsService } from '@/lib/services';
 import { Skeleton } from '@/components/ui/skeleton';
+
 
 type NewsItem = {
   title: string;
@@ -13,18 +10,13 @@ type NewsItem = {
   'data-ai-hint': string;
 };
 
-export default function TrendingNewsWidget() {
-  const [items, setItems] = useState<NewsItem[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const data = await newsService.fetchTrending();
-      setItems(data);
-      setLoading(false);
-    })();
-  }, []);
+interface TrendingNewsWidgetProps {
+  items: NewsItem[];
+  loading: boolean;
+}
+
+export default function TrendingNewsWidget({ items, loading }: TrendingNewsWidgetProps) {
 
   if (loading) {
     return (
@@ -43,6 +35,14 @@ export default function TrendingNewsWidget() {
     );
   }
 
+  if (items.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-8">
+        <p>Could not load trending news at the moment.</p>
+      </div>
+    );
+  }
+
   return (
     <ul className="space-y-4">
       {items.map((n, i) => (
@@ -57,13 +57,12 @@ export default function TrendingNewsWidget() {
             className="flex gap-4 items-center group"
           >
             <div className="relative w-28 h-20 rounded-md overflow-hidden shrink-0">
-                <Image
+                <img
                     src={n.imageUrl}
                     alt={n.title}
-                    fill
-                    sizes="112px"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     data-ai-hint={n['data-ai-hint']}
+                    loading="lazy"
                 />
             </div>
             <div className='flex-1'>

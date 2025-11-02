@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-// --- MODIFICATION START ---
-// The scoreAnswers function is no longer needed here.
-import { geminiExplainRoles } from "@/ai/flows/path-finder";
-// --- MODIFICATION END ---
+import { scoreAnswers, geminiExplainRoles } from "@/ai/flows/path-finder";
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,10 +8,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing answers" }, { status: 400 });
     }
 
-    // --- MODIFICATION START ---
-    // Removed the incorrect scoring step. We now pass the raw answers directly.
-    const roles = await geminiExplainRoles(answers);
-    // --- MODIFICATION END ---
+    // derive scores
+    const scores = scoreAnswers(answers);
+
+    // ask Gemini for top 3 roles
+    const roles = await geminiExplainRoles(scores, answers);
 
     return NextResponse.json({ roles });
   } catch (err: any) {

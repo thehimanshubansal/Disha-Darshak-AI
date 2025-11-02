@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -7,6 +6,7 @@ import Header from './header';
 import Sidebar from './sidebar';
 import MobileSidebar from './mobile-sidebar';
 import LoginDialog from './login-dialog';
+import ProfileCompletionDialog from './ProfileCompletionDialog';
 import GatePlaceholder from './gate-placeholder';
 import HomeDashboard from './home-dashboard';
 import JobTrends from './job-trends';
@@ -14,19 +14,17 @@ import ResumeRanker from './resume-ranker';
 import MockInterview from './mock-interview';
 import PathFinder from './path-finder';
 import SettingsPage from './settings-page';
-import EditProfileDialog from './edit-profile-dialog';
 import TwinklingStars from './twinkling-stars';
 import CommunityPage from './community-page';
-import HistoryPage from './history-page';
 import Footer from './footer';
 import DDTalksPage from './dd-talks-page';
 import ChatPage from './chat-page';
-import ProfilePage from './profile-page'; // Import the ProfilePage component
+import ProfilePage from './profile-page';
+import { cn } from '@/lib/utils';
 
 export default function CareerCompassLayout() {
-  const { activeRoute, authed, showLogin, showEditProfile, handleNavigate } = useAppContext();
-  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
-
+  const { activeRoute, authed, showLogin, showProfileCompletion, isInterviewActive } = useAppContext();
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(true);  
   const gated = (component: React.ReactNode) => (authed ? component : <GatePlaceholder />);
 
   const componentMap: { [key: string]: React.ReactNode } = {
@@ -40,7 +38,6 @@ export default function CareerCompassLayout() {
     chat: gated(<ChatPage />),
     profile: gated(<ProfilePage />),
     settings: gated(<SettingsPage />),
-    history: gated(<HistoryPage />),
   };
   
   const pageVariants = {
@@ -53,20 +50,25 @@ export default function CareerCompassLayout() {
     <>
       <TwinklingStars />
       <div className="h-screen w-full text-foreground font-body relative flex flex-col">
-        <Header
-          desktopSidebarCollapsed={desktopSidebarCollapsed}
-          onToggleDesktopSidebar={() => setDesktopSidebarCollapsed((c) => !c)}
-        />
+        {!isInterviewActive && (
+          <Header
+            desktopSidebarCollapsed={desktopSidebarCollapsed}
+            onToggleDesktopSidebar={() => setDesktopSidebarCollapsed((c) => !c)}
+          />
+        )}
 
-        <div className="flex h-[calc(100vh-69px)]">
-          {authed && (
+        <div className={cn("flex", isInterviewActive ? "h-screen" : "h-[calc(100vh-69px)]")}>
+          {!isInterviewActive && authed && (
             <>
               <Sidebar collapsed={desktopSidebarCollapsed} />
               <MobileSidebar />
             </>
           )}
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+          <main className={cn(
+              "flex-1 relative", 
+              !isInterviewActive && "p-4 md:p-6 space-y-6 overflow-y-auto"
+            )}>
             <AnimatePresence mode="wait">
               <motion.div 
                 key={activeRoute}
@@ -78,13 +80,15 @@ export default function CareerCompassLayout() {
                 {componentMap[activeRoute] || <HomeDashboard />}
               </motion.div>
             </AnimatePresence>
-            {activeRoute === 'home' && <Footer />}
+            {!isInterviewActive && activeRoute === 'home' && <Footer />}
           </main>
         </div>
-
-        <AnimatePresence>{showLogin && <LoginDialog />}</AnimatePresence>
-        <AnimatePresence>{showEditProfile && <EditProfileDialog />}</AnimatePresence>
       </div>
+
+      <AnimatePresence>
+        {showLogin && <LoginDialog />}
+        {showProfileCompletion && <ProfileCompletionDialog />}
+      </AnimatePresence>
     </>
   );
 }

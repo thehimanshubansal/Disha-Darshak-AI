@@ -1,75 +1,59 @@
-// src/components/career-compass/resume-ranker.tsx
-
 'use client';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { FileUp, CheckCircle, Lightbulb, ThumbsUp, ThumbsDown, Sparkles, Flame } from 'lucide-react';
+import { FileUp, CheckCircle, Lightbulb, ThumbsUp, ThumbsDown, Sparkles, Flame, Loader2, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useAppContext } from '@/contexts/app-context';
 import { evaluationService } from '@/lib/services';
-import { rankResumeFlow, RankResumeOutput } from '@/ai/flows/rank-resume';
-import { roastResumeFlow, RoastResumeOutput } from '@/ai/flows/roast-resume';
+import { rankResumeFlow } from '@/ai/flows/rank-resume';
+import { roastResumeFlow } from '@/ai/flows/roast-resume';
 import CircularProgress from './circular-progress';
-// --- MODIFICATION START ---
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FIELDS_OF_INTEREST, findFieldDetails } from '@/lib/fields-of-interest';
-// --- MODIFICATION END ---
+
+const MemoizedResumePreview = memo(function MemoizedResumePreview({ url, fileName }: { url: string, fileName: string | undefined }) {
+  return (
+    <motion.div
+      key="resume-preview"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="h-full"
+    >
+      <Card className="h-full min-h-[75vh]">
+        <CardHeader>
+          <CardTitle className="font-headline">Resume Preview</CardTitle>
+          <CardDescription>{fileName}</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[calc(100%-78px)]">
+          <iframe
+            src={url}
+            className="w-full h-full rounded-md border"
+            title="Resume Preview"
+          />
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+});
 
 export default function ResumeRanker() {
   const { toast } = useToast();
-  const { user, refreshEvaluations } = useAppContext();
+  const { user, refreshEvaluations, resumeRankerState, setResumeRankerState, startChatWithEvaluationContext } = useAppContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [pdfBase64, setPdfBase64] = useState<string>('');
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string>('');
-  const [jobRole, setJobRole] = useState('Software Engineer');
-  
-  // --- MODIFICATION START ---
-  const [selectedCategory, setSelectedCategory] = useState<keyof typeof FIELDS_OF_INTEREST>('Software Engineering');
-  const [selectedField, setSelectedField] = useState<string | null>(null);
-  // --- MODIFICATION END ---
-
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRoasting, setIsRoasting] = useState(false);
-  const [rankingResult, setRankingResult] = useState<RankResumeOutput | null>(null);
-  const [roastResult, setRoastResult] = useState<RoastResumeOutput | null>(null);
   const [activeTab, setActiveTab] = useState('rank');
-
-  useEffect(() => {
-    if (user?.fieldOfInterest) {
-        const details = findFieldDetails(user.fieldOfInterest);
-        if (details) {
-            setSelectedCategory(details.category as keyof typeof FIELDS_OF_INTEREST);
-            setSelectedField(details.field);
-        }
-    }
-  }, [user]);
-
-  useEffect(() => {
-    return () => {
-      if (pdfPreviewUrl) {
-        URL.revokeObjectURL(pdfPreviewUrl);
-      }
-    };
-  }, [pdfPreviewUrl]);
-
-  // --- MODIFICATION START ---
-  const handleCategoryChange = (newCategoryKey: string) => {
-    const newCategory = newCategoryKey as keyof typeof FIELDS_OF_INTEREST;
-    setSelectedCategory(newCategory);
-    setSelectedField(null);
-  };
-  // --- MODIFICATION END ---
+  
+  const { rankingResult, roastResult } = resumeRankerState;
 
   const processFile = async (file: File) => {
     if (!file) return;
@@ -78,21 +62,19 @@ export default function ResumeRanker() {
         return;
     }
 
-    if (pdfPreviewUrl) {
-      URL.revokeObjectURL(pdfPreviewUrl);
-    }
-
     const previewUrl = URL.createObjectURL(file);
-    setPdfPreviewUrl(previewUrl);
-
-    setUploadedFile(file);
-    setRankingResult(null);
-    setRoastResult(null);
-
+    
     const reader = new FileReader();
     reader.onload = (e) => {
         const base64 = (e.target?.result as string).split(',')[1];
-        setPdfBase64(base64);
+        setResumeRankerState({
+          uploadedFile: file,
+          pdfPreviewUrl: previewUrl,
+          pdfBase64: base64,
+          // Clear previous results when a new file is uploaded
+          rankingResult: null,
+          roastResult: null,
+        });
         toast({ title: "Resume Loaded", description: `Ready to analyze ${file.name}.` });
     };
     reader.onerror = () => {
@@ -114,23 +96,21 @@ export default function ResumeRanker() {
   };
 
   const handleAnalyze = async () => {
-    // --- MODIFICATION START ---
-    const field = selectedField || selectedCategory;
+    const { pdfBase64, jobRole, field } = resumeRankerState;
     if (!pdfBase64 || !jobRole || !field) {
-        toast({ variant: 'destructive', title: "Missing Information", description: "Please upload a resume, fill out the job role, and select a category." });
+        toast({ variant: 'destructive', title: "Missing Information", description: "Please upload a resume and fill out the job role and field." });
         return;
     }
-    // --- MODIFICATION END ---
     if (!user) {
         toast({ variant: 'destructive', title: "Authentication Error", description: "You must be logged in to rank a resume." });
         return;
     }
-    setPdfPreviewUrl('');
+    
     setIsAnalyzing(true);
-    setRankingResult(null);
+    setResumeRankerState({ rankingResult: null, roastResult: null });
     try {
         const result = await rankResumeFlow({ pdfBase64, jobRole, field });
-        setRankingResult(result);
+        setResumeRankerState({ rankingResult: result });
         setActiveTab('rank');
         await evaluationService.saveRankResult(user.uid, { jobRole, field, result });
         await refreshEvaluations();
@@ -144,23 +124,21 @@ export default function ResumeRanker() {
   };
 
   const handleRoast = async () => {
-    // --- MODIFICATION START ---
-    const field = selectedField || selectedCategory;
+    const { pdfBase64, jobRole, field } = resumeRankerState;
     if (!pdfBase64 || !jobRole || !field) {
-        toast({ variant: 'destructive', title: "Missing Information", description: "Please upload a resume, fill out the job role, and select a category." });
+        toast({ variant: 'destructive', title: "Missing Information", description: "Please upload a resume and fill out the job role and field." });
         return;
     }
-    // --- MODIFICATION END ---
     if (!user) {
         toast({ variant: 'destructive', title: "Authentication Error", description: "You must be logged in to roast a resume." });
         return;
     }
-    setPdfPreviewUrl('');
+    
     setIsRoasting(true);
-    setRoastResult(null);
+    setResumeRankerState({ rankingResult: null, roastResult: null });
     try {
         const result = await roastResumeFlow({ pdfBase64, jobRole, field });
-        setRoastResult(result);
+        setResumeRankerState({ roastResult: result });
         setActiveTab('roast');
         await evaluationService.saveRoastResult(user.uid, { jobRole, field, result });
         await refreshEvaluations();
@@ -178,29 +156,23 @@ export default function ResumeRanker() {
     show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' }}
   };
 
-  const ResumePreview = () => (
-    <motion.div
-        key="resume-preview"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-    >
-        <Card className="h-[75vh]">
-            <CardHeader>
-                <CardTitle className="font-headline">Resume Preview</CardTitle>
-                <CardDescription>{uploadedFile?.name}</CardDescription>
-            </CardHeader>
-            <CardContent className="h-[calc(100%-78px)]">
-                <iframe
-                    src={pdfPreviewUrl}
-                    className="w-full h-full rounded-md border"
-                    title="Resume Preview"
-                />
-            </CardContent>
-        </Card>
-    </motion.div>
-  );
+  const handleRankInsight = () => {
+    if (!rankingResult) return;
+    startChatWithEvaluationContext({
+        type: 'Resume Ranking',
+        inputs: { jobRole: resumeRankerState.jobRole, field: resumeRankerState.field },
+        result: rankingResult,
+    });
+  };
+
+  const handleRoastInsight = () => {
+    if (!roastResult) return;
+    startChatWithEvaluationContext({
+        type: 'Resume Roast',
+        inputs: { jobRole: resumeRankerState.jobRole, field: resumeRankerState.field },
+        result: roastResult,
+    });
+  };
 
   const RankingResults = () => (
     <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
@@ -229,6 +201,11 @@ export default function ResumeRanker() {
                 {rankingResult?.keywords_missing.map(k => <Badge key={k} variant="secondary">{k}</Badge>)}
             </CardContent>
         </Card></motion.div>
+        <motion.div variants={itemVariants} className="text-center pt-4">
+            <Button onClick={handleRankInsight}>
+                <MessageSquare className="mr-2 h-4 w-4" /> Get more AI insight
+            </Button>
+        </motion.div>
     </motion.div>
   );
 
@@ -250,20 +227,26 @@ export default function ResumeRanker() {
                 </ul>
             </CardContent>
         </Card></motion.div>
+        <motion.div variants={itemVariants} className="text-center pt-4">
+            <Button onClick={handleRoastInsight}>
+                <MessageSquare className="mr-2 h-4 w-4" /> Get more AI insight
+            </Button>
+        </motion.div>
     </motion.div>
   );
   
-  const Placeholder = ({ action }: { action: string }) => (
-    <motion.div variants={itemVariants} className="flex items-center justify-center h-full">
-        <Card className="w-full text-center p-12">
-            <CardHeader>
-                <Sparkles className="h-12 w-12 mx-auto text-muted-foreground" />
-                <CardTitle className="font-headline mt-4">Awaiting Your Resume</CardTitle>
-                <CardDescription>Upload your resume, provide details, and click "{action}" to get started.</CardDescription>
-            </CardHeader>
-        </Card>
-    </motion.div>
+  const Placeholder = () => (
+    <Card className="w-full text-center p-12 min-h-[75vh] flex flex-col justify-center">
+        <CardHeader>
+            <Sparkles className="h-12 w-12 mx-auto text-muted-foreground" />
+            <CardTitle className="font-headline mt-4">Awaiting Your Resume</CardTitle>
+            <CardDescription>Upload your resume, provide details, and click an action to get started.</CardDescription>
+        </CardHeader>
+    </Card>
   );
+
+  const showResults = !isAnalyzing && !isRoasting && (rankingResult || roastResult);
+  const showPreview = resumeRankerState.pdfPreviewUrl && !showResults;
 
   return (
     <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
@@ -282,10 +265,10 @@ export default function ResumeRanker() {
                         <div onClick={() => fileInputRef.current?.click()} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
                             className={cn("mt-1 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
                             isDragging ? "border-primary bg-primary/10" : "border-muted-foreground/30 hover:border-primary/50 hover:bg-muted/50")}>
-                            {uploadedFile ? (
+                            {resumeRankerState.uploadedFile ? (
                                 <div className="flex flex-col items-center gap-2 text-green-500">
                                     <CheckCircle className="h-8 w-8" />
-                                    <span className="font-semibold text-foreground text-sm">{uploadedFile.name}</span>
+                                    <span className="font-semibold text-foreground text-sm">{resumeRankerState.uploadedFile.name}</span>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -297,40 +280,22 @@ export default function ResumeRanker() {
                     </div>
                     <div>
                         <Label htmlFor="job-role">2. Target Job Role</Label>
-                        <Input id="job-role" placeholder="e.g., Senior Frontend Developer" value={jobRole} onChange={e => setJobRole(e.target.value)} />
+                        <Input id="job-role" placeholder="e.g., Senior Frontend Developer" value={resumeRankerState.jobRole} onChange={e => setResumeRankerState({ jobRole: e.target.value })} />
                     </div>
-                    {/* --- MODIFICATION START --- */}
-                    <div className="grid grid-cols-1 gap-4">
-                        <div>
-                            <Label>3. Field / Industry</Label>
-                            <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-                                <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
-                                <SelectContent>{Object.keys(FIELDS_OF_INTEREST).map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label>4. Specialization (Optional)</Label>
-                            <Select value={selectedField || ''} onValueChange={setSelectedField}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a specialization" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {FIELDS_OF_INTEREST[selectedCategory]?.subFields.map((field) => (
-                                        <SelectItem key={field} value={field}>{field}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                     <div>
+                        <Label htmlFor="field">3. Field / Industry</Label>
+                        <Input id="field" placeholder="e.g., FinTech" value={resumeRankerState.field} onChange={e => setResumeRankerState({ field: e.target.value })} />
                     </div>
-                    {/* --- MODIFICATION END --- */}
                     <div className="pt-2">
-                        <h3 className="text-sm font-medium mb-2">5. Choose Action</h3>
+                        <h3 className="text-sm font-medium mb-2">4. Choose Action</h3>
                         <div className="grid grid-cols-2 gap-2">
-                            <Button onClick={handleAnalyze} disabled={isAnalyzing || !pdfBase64}>
-                                {isAnalyzing ? 'Analyzing...' : 'Rank Resume'}
+                            <Button onClick={handleAnalyze} disabled={isAnalyzing || isRoasting || !resumeRankerState.pdfBase64}>
+                                {isAnalyzing && <Loader2 className="animate-spin" />}
+                                Rank Resume
                             </Button>
-                            <Button onClick={handleRoast} disabled={isRoasting || !pdfBase64} variant="outline">
-                                {isRoasting ? 'Roasting...' : 'Roast Resume'}
+                            <Button onClick={handleRoast} disabled={isAnalyzing || isRoasting || !resumeRankerState.pdfBase64} variant="outline">
+                                {isRoasting && <Loader2 className="animate-spin" />}
+                                Roast Resume
                             </Button>
                         </div>
                     </div>
@@ -338,45 +303,50 @@ export default function ResumeRanker() {
             </Card>
         </motion.div>
         
-        <div className="lg:col-span-2">
-          <AnimatePresence mode="wait">
-            {pdfPreviewUrl ? (
-              <ResumePreview />
-            ) : (
-              <motion.div
-                key="results-view"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="rank">Rank Results</TabsTrigger>
-                    <TabsTrigger value="roast">Roast Results</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="rank" className="space-y-6">
-                    {isAnalyzing ? (
-                      <div className="space-y-6">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-48 w-full" />)}</div>
-                    ) : rankingResult ? (
-                      <RankingResults />
-                    ) : (
-                      <Placeholder action="Rank Resume" />
-                    )}
-                  </TabsContent>
-                  <TabsContent value="roast" className="space-y-6">
-                    {isRoasting ? (
-                      <div className="space-y-6">{[...Array(2)].map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}</div>
-                    ) : roastResult ? (
-                      <RoastResults />
-                    ) : (
-                      <Placeholder action="Roast Resume" />
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="lg:col-span-2 relative">
+            <AnimatePresence>
+                {(isAnalyzing || isRoasting) && (
+                    <motion.div 
+                        className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                        <p className="font-semibold text-lg">{isAnalyzing ? 'Ranking Your Resume...' : 'Roasting Your Resume...'}</p>
+                        <p className="text-sm text-muted-foreground">The AI is hard at work. This may take a moment.</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence mode="wait">
+                {showResults ? (
+                    <motion.div
+                        key="results-view"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                    >
+                        <Tabs value={activeTab} onValueChange={setActiveTab}>
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="rank" disabled={!rankingResult}>Rank Results</TabsTrigger>
+                                <TabsTrigger value="roast" disabled={!roastResult}>Roast Results</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="rank">
+                                {rankingResult ? <RankingResults /> : <Placeholder />}
+                            </TabsContent>
+                            <TabsContent value="roast">
+                                {roastResult ? <RoastResults /> : <Placeholder />}
+                            </TabsContent>
+                        </Tabs>
+                    </motion.div>
+                ) : showPreview ? (
+                    <MemoizedResumePreview url={resumeRankerState.pdfPreviewUrl} fileName={resumeRankerState.uploadedFile?.name} />
+                ) : (
+                    <motion.div key="placeholder-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <Placeholder />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
 
       </div>

@@ -44,3 +44,8 @@ next-env.d.ts
 firebase-debug.log
 firestore-debug.log
 secret-account-key.json
+code_base.py
+project.txt
+service-account-key.json
+
+apphosting.yaml

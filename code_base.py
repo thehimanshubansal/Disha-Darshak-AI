@@ -20,8 +20,7 @@ INCLUDE_EXTENSIONS = [
     ".tsx",
     ".css",
     ".html",
-    ".ipynb"
-       # Added .ipynb extension
+    ".ipynb"   # Added .ipynb extension
 ]
 
 EXCLUDE_FILES = [
@@ -29,6 +28,7 @@ EXCLUDE_FILES = [
     ".gitignore",
     ".env",
     "requirements.txt",
+    "README.md",
     "poetry.lock",
     "localrtt_microservices.py",
     "microservices-app-code-files.txt",
@@ -180,7 +180,7 @@ def extract_code_files(repo_path):
 
 if __name__ == "__main__":
     # Hardcoded repository path
-    repo_path = r"D:\projects\college\Disha\Disha-Darshak-AI" # Your repository path
+    repo_path = r"C:\Users\Asus\OneDrive\Desktop\bishh\Disha-Darshak-AI" # Your repository path
     tree = get_file_folder_structure(repo_path)
     # output_file = "project_structure.txt"
     # try:

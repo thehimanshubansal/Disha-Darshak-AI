@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Provides a career advice chatbot that offers personalized advice based on the user's resume.
+ * @fileOverview Provides a career advice chatbot that offers personalized advice based on the user's profile.
  * This is a standard, non-streaming flow.
  */
 
@@ -11,14 +11,14 @@ import { loadPrompt } from '../prompt-loader';
 
 // Define the schema for a single message in the history
 const MessageSchema = z.object({
-  role: z.enum(['user', 'bot']),
+  role: z.enum(['user', 'bot', 'system']), // Allow system role for context
   text: z.string(),
 });
 
 const CareerAdviceChatbotInputSchema = z.object({
-  resumeText: z.string().describe("The text content of the user's resume."),
   userInput: z.string().describe("The user's question or request for career advice."),
   history: z.array(MessageSchema).optional().describe("The conversation history between the user and the chatbot."),
+  userProfileJson: z.string().optional().describe("A JSON string containing the user's profile and evaluation data."),
 });
 export type CareerAdviceChatbotInput = z.infer<typeof CareerAdviceChatbotInputSchema>;
 
@@ -39,12 +39,11 @@ const careerAdviceChatbotFlow = ai.defineFlow(
     outputSchema: CareerAdviceChatbotOutputSchema,
   },
   async (input) => {
-    const { resumeText, userInput, history = [] } = input;
+    const { userInput, history = [], userProfileJson } = input;
 
-    // Load the base system prompt from the markdown file.
-    // This prompt should contain the core instructions for the AI.
+    // The system prompt now depends on whether profile JSON is provided.
     const systemPrompt = loadPrompt('chatbot/career-chatbot.md', {
-      resumeText: resumeText || 'No resume provided.',
+      userProfileJson: userProfileJson || 'No profile data provided. Provide generic advice and encourage the user to use the personalized feature if they have a profile.',
     });
 
     // Format the conversation history into a string.

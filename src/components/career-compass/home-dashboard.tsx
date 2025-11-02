@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import TrendingNewsWidget from "./trending-news-widget";
 import QuickTile from "./quick-tile";
-import { Bot, FileText, LineChart, Newspaper, Workflow } from "lucide-react";
+import { Bot, FileText, LineChart, Newspaper, RefreshCw, Workflow } from "lucide-react";
 import { useAppContext } from "@/contexts/app-context";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
@@ -22,11 +22,60 @@ const staticChartData = [
   { name: 'Digital Marketer', value: 380 },
 ];
 
+type NewsItem = {
+  title: string;
+  description: string;
+  url: string;
+  imageUrl: string;
+  'data-ai-hint': string;
+};
+
 export default function HomeDashboard() {
   const { handleNavigate, authed, setShowLogin } = useAppContext();
+
+  const [allNews, setAllNews] = useState<NewsItem[]>([]);
+  const [displayedNews, setDisplayedNews] = useState<NewsItem[]>([]);
+  const [newsIndex, setNewsIndex] = useState(0);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
   
   useEffect(() => {
+    const fetchNews = async () => {
+      setIsLoadingNews(true);
+      try {
+        const response = await fetch('/api/news'); // This is the crucial change
+        if (!response.ok) {
+          throw new Error(`API responded with status: ${response.status}`);
+        }
+        const data: NewsItem[] = await response.json();
+        
+        setAllNews(data);
+        setDisplayedNews(data.slice(0, 3));
+      } catch (error) {
+        console.error("Failed to fetch news from internal API:", error);
+        setAllNews([]);
+        setDisplayedNews([]);
+      } finally {
+        setIsLoadingNews(false);
+      }
+    };
+    fetchNews();
   }, []);
+
+
+   const handleRefreshNews = () => {
+    if (allNews.length === 0) return;
+    
+    // --- MODIFICATION: Logic to cycle through the news articles ---
+    const nextIndex = newsIndex + 3;
+    if (nextIndex >= allNews.length) {
+      // If we've reached the end, loop back to the start
+      setNewsIndex(0);
+      setDisplayedNews(allNews.slice(0, 3));
+    } else {
+      setNewsIndex(nextIndex);
+      setDisplayedNews(allNews.slice(nextIndex, nextIndex + 3));
+    }
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -89,10 +138,17 @@ export default function HomeDashboard() {
       >
         <MotionCard>
           <CardHeader>
-            <CardTitle className="font-headline flex items-center gap-2"><Newspaper className="h-5 w-5" /> Trending News</CardTitle>
+            {/* --- MODIFICATION: Added refresh button and flex layout --- */}
+            <div className="flex justify-between items-center">
+              <CardTitle className="font-headline flex items-center gap-2"><Newspaper className="h-5 w-5" /> Trending News</CardTitle>
+              <Button variant="ghost" size="icon" onClick={handleRefreshNews} disabled={isLoadingNews}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <TrendingNewsWidget />
+            {/* --- MODIFICATION: Pass news and loading state as props --- */}
+            <TrendingNewsWidget items={displayedNews} loading={isLoadingNews} />
           </CardContent>
         </MotionCard>
         <motion.button 

@@ -1,4 +1,4 @@
-import { Home, LineChart, FileText, Bot, Workflow, Settings, Users, Mic, MessagesSquare, User } from 'lucide-react'; // Add User icon
+import { Home, LineChart, FileText, Bot, Workflow, Settings, Users, Mic, MessagesSquare, User, History } from 'lucide-react';
 
 export const LS_KEYS = {
   token: 'ccai_token',
@@ -6,7 +6,7 @@ export const LS_KEYS = {
   user: 'ccai_user_name',
   avatar: 'ccai_user_avatar',
   email: 'ccai_email',
-  chatHistory: 'ccai_chat_history', // New key
+  chatHistory: 'ccai_chat_history',
 };
 
 const mainNav = {
@@ -43,7 +43,6 @@ const toolsNav = {
   ],
 };
 
-// Added a 'Profile' item to the account navigation group.
 const accountNav = {
   key: 'account',
   label: 'Account',
