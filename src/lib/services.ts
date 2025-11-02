@@ -60,6 +60,10 @@ export type SignUpData = {
     gender: string;
     country: string;
     language: string;
+    age: string;
+    gender: string;
+    country: string;
+    language: string;
     fieldOfInterest: string;
     avatar?: string | null;
 }
@@ -69,6 +73,9 @@ export type { FirebaseUser };
 export const userDbService = {
   createUser: async (user: FirebaseUser) => {
     const userRef = ref(db, 'users/' + user.uid);
+    const ageAsNumber = parseInt(data.age, 10);
+    const fullName = [data.firstName, data.lastName].filter(Boolean).join(' ');
+
     await set(userRef, {
       uid: user.uid,
       email: user.email,
@@ -80,13 +87,19 @@ export const userDbService = {
   },
 
   getUser: async (uid: string): Promise<UserProfileData | null> => {
+
+  getUser: async (uid: string): Promise<UserProfileData | null> => {
     const dbRef = ref(db);
     const snapshot = await get(child(dbRef, `users/${uid}`));
     return snapshot.exists() ? snapshot.val() : null;
   },
 
   updateUser: async (uid: string, data: Partial<UserProfileData>) => {
+
+  updateUser: async (uid: string, data: Partial<UserProfileData>) => {
     const userRef = ref(db, 'users/' + uid);
+    const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
+    await update(userRef, cleanData);
     const cleanData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
     await update(userRef, cleanData);
   }
@@ -175,6 +188,7 @@ export const authService = {
     if (Object.keys(authUpdates).length > 0) {
       await updateFirebaseAuthProfile(user, authUpdates as { displayName?: string, photoURL?: string });
     }
+    
     
     await userDbService.updateUser(uid, data);
     return await userDbService.getUser(uid);

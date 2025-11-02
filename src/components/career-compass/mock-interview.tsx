@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 
+
 type Message = {
   role: 'user' | 'bot';
   text: string;
@@ -139,6 +140,7 @@ export default function MockInterview() {
       jobRole,
       difficulty,
       focusField: field,
+      focusField: field,
     };
     
     try {
@@ -186,6 +188,7 @@ export default function MockInterview() {
                 history: response.history 
             });
             await refreshEvaluations();
+            await refreshEvaluations();
         }
         
         toast({ title: "Interview Finished", description: "Your evaluation has been saved." });
@@ -228,6 +231,7 @@ export default function MockInterview() {
             <CardHeader>
                 <CardTitle className="font-headline text-2xl md:text-3xl">AI Mock Interview</CardTitle>
                 <CardDescription>Set the parameters for your interview session.</CardDescription>
+                <CardDescription>Set the parameters for your interview session.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -268,6 +272,7 @@ export default function MockInterview() {
                     <Input placeholder={jobRolePlaceholder} value={mockInterviewState.jobRole} onChange={(e) => setMockInterviewState({ jobRole: e.target.value })} />
                 </div>
                 <div className="space-y-2">
+                    <label className="text-sm font-medium">Difficulty Level *</label>
                     <label className="text-sm font-medium">Difficulty Level *</label>
                     <div className="grid grid-cols-3 gap-2">
                         <Button variant={mockInterviewState.difficulty === 'easy' ? 'default' : 'outline'} onClick={() => setMockInterviewState({ difficulty: 'easy' })}>Easy</Button>

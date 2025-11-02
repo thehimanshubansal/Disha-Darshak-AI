@@ -199,9 +199,12 @@ export default function LoginDialog() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ answers }),
         });
+
         const data = await res.json();
         setInterestSuggestions(data.roles || ['Data Science', 'Cloud Computing', 'UX/UI Design']);
     } catch (e) {
+      console.error("Failed to get suggestions:", e);
+      setInterestSuggestions(['Data Science', 'Cloud Computing', 'UX/UI Design']);
       console.error("Failed to get suggestions:", e);
       setInterestSuggestions(['Data Science', 'Cloud Computing', 'UX/UI Design']);
     } finally {

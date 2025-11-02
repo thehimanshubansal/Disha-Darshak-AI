@@ -24,8 +24,8 @@ export const fetchJobTrends = ai.defineFlow(
     outputSchema: JobTrendsOutputSchema,
   },
   async (input) => {
-    const appId = process.env.ADZUNA_APP_ID;
-    const apiKey = process.env.ADZUNA_APP_KEY;
+    const appId = "915a9063";
+    const apiKey = "80dab6bc9363cf3791ef4541812660bf";
 
     if (!appId || !apiKey) {
       throw new Error('Adzuna API credentials are not set in environment variables.');

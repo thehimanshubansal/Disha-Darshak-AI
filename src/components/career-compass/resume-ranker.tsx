@@ -1,5 +1,6 @@
 'use client';
 import { useRef, useState, useEffect, memo } from 'react';
+import { useRef, useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -99,12 +100,14 @@ export default function ResumeRanker() {
     const { pdfBase64, jobRole, field } = resumeRankerState;
     if (!pdfBase64 || !jobRole || !field) {
         toast({ variant: 'destructive', title: "Missing Information", description: "Please upload a resume and fill out the job role and field." });
+        toast({ variant: 'destructive', title: "Missing Information", description: "Please upload a resume and fill out the job role and field." });
         return;
     }
     if (!user) {
         toast({ variant: 'destructive', title: "Authentication Error", description: "You must be logged in to rank a resume." });
         return;
     }
+    
     
     setIsAnalyzing(true);
     setResumeRankerState({ rankingResult: null, roastResult: null });
@@ -127,12 +130,14 @@ export default function ResumeRanker() {
     const { pdfBase64, jobRole, field } = resumeRankerState;
     if (!pdfBase64 || !jobRole || !field) {
         toast({ variant: 'destructive', title: "Missing Information", description: "Please upload a resume and fill out the job role and field." });
+        toast({ variant: 'destructive', title: "Missing Information", description: "Please upload a resume and fill out the job role and field." });
         return;
     }
     if (!user) {
         toast({ variant: 'destructive', title: "Authentication Error", description: "You must be logged in to roast a resume." });
         return;
     }
+    
     
     setIsRoasting(true);
     setResumeRankerState({ rankingResult: null, roastResult: null });
@@ -243,6 +248,14 @@ export default function ResumeRanker() {
             <CardDescription>Upload your resume, provide details, and click an action to get started.</CardDescription>
         </CardHeader>
     </Card>
+  const Placeholder = () => (
+    <Card className="w-full text-center p-12 min-h-[75vh] flex flex-col justify-center">
+        <CardHeader>
+            <Sparkles className="h-12 w-12 mx-auto text-muted-foreground" />
+            <CardTitle className="font-headline mt-4">Awaiting Your Resume</CardTitle>
+            <CardDescription>Upload your resume, provide details, and click an action to get started.</CardDescription>
+        </CardHeader>
+    </Card>
   );
 
   const showResults = !isAnalyzing && !isRoasting && (rankingResult || roastResult);
@@ -287,6 +300,7 @@ export default function ResumeRanker() {
                         <Input id="field" placeholder="e.g., FinTech" value={resumeRankerState.field} onChange={e => setResumeRankerState({ field: e.target.value })} />
                     </div>
                     <div className="pt-2">
+                        <h3 className="text-sm font-medium mb-2">4. Choose Action</h3>
                         <h3 className="text-sm font-medium mb-2">4. Choose Action</h3>
                         <div className="grid grid-cols-2 gap-2">
                             <Button onClick={handleAnalyze} disabled={isAnalyzing || isRoasting || !resumeRankerState.pdfBase64}>

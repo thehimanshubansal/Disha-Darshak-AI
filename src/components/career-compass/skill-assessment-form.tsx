@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, ArrowRight, CheckCircle, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '../ui/input';
@@ -31,9 +32,30 @@ const fullQuestions = [
     { id: 'workEnvironment', statement: 'I work best in a structured and organized work environment.', type: 'likert', required: true },
     { id: 'futureVision', question: 'Where do you see yourself in the next 5–10 years?', type: 'text', required: false },
     { id: 'constraints', question: 'Do you have any specific limitations or constraints (financial, location, physical, etc.) that should be considered in your career planning?', type: 'text', required: false },
+// The full, default list of questions for the main "Skill-set Finder" page.
+const fullQuestions = [
+    { id: 'educationLevel', question: 'What is your highest level of education completed?', type: 'mcq', options: ['High School', 'Diploma', 'Bachelor’s Degree', 'Master’s Degree', 'Doctorate', 'Other'], required: true },
+    { id: 'specialization', question: 'What subjects or fields did you specialize in during your education?', type: 'mcq', options: ['Science', 'Engineering', 'Arts', 'Commerce', 'Management', 'Medicine', 'Law', 'Other'], required: true },
+    { id: 'favoriteSubjects', question: 'Which subjects/topics do you enjoy the most?', type: 'mcq', options: ['Mathematics', 'Science', 'Technology', 'Literature', 'History', 'Arts', 'Business', 'Other'], required: true },
+    { id: 'strongestSkills', question: 'What are your strongest skills?', type: 'mcq', options: ['Technical', 'Creative', 'Analytical', 'Communication', 'Leadership', 'Problem-solving', 'Other'], required: true },
+    { id: 'skillsToImprove', question: 'Are there any skills you want to improve or learn in the future?', type: 'mcq', options: ['Programming', 'Public Speaking', 'Data Analysis', 'Writing', 'Design', 'Leadership', 'Other'], required: true },
+    { id: 'dreamCareer', question: 'What is your dream career or job role (if you already have one in mind)?', type: 'text', required: false },
+    { id: 'careerMotivation', question: 'What motivates you the most in a career?', type: 'mcq', options: ['Money', 'Stability', 'Creativity', 'Impact', 'Leadership', 'Work-life Balance', 'Growth Opportunities'], required: true },
+    { id: 'workStyle', statement: 'Do you prefer working individually?', type: 'likert', required: true },
+    { id: 'industryPreference', question: 'Which industries are you most interested in?', type: 'mcq', options: ['Technology', 'Healthcare', 'Business', 'Education', 'Arts', 'Finance', 'Government', 'Other'], required: true },
+    { id: 'logicVsCreativity', statement: 'I see myself as more logical/analytical than creative/innovative.', type: 'likert', required: true },
+    { id: 'problemSolvingStyle', statement: 'I usually solve problems through step-by-step analysis.', type: 'likert', required: true },
+    { id: 'workEnvironment', statement: 'I work best in a structured and organized work environment.', type: 'likert', required: true },
+    { id: 'futureVision', question: 'Where do you see yourself in the next 5–10 years?', type: 'text', required: false },
+    { id: 'constraints', question: 'Do you have any specific limitations or constraints (financial, location, physical, etc.) that should be considered in your career planning?', type: 'text', required: false },
 ];
 
 const likertOptions = [
+    { value: 1, emoji: '☹️', label: 'Strongly Disagree' },
+    { value: 2, emoji: '🙁', label: 'Disagree' },
+    { value: 3, emoji: '😐', label: 'Neutral' },
+    { value: 4, emoji: '🙂', label: 'Agree' },
+    { value: 5, emoji: '😊', label: 'Strongly Agree' },
     { value: 1, emoji: '☹️', label: 'Strongly Disagree' },
     { value: 2, emoji: '🙁', label: 'Disagree' },
     { value: 3, emoji: '😐', label: 'Neutral' },
@@ -88,9 +110,12 @@ export default function SkillAssessmentForm({ onComplete, questions: customQuest
 
     const handleSubmit = async () => {
         if (isSignupQuiz && onComplete) {
+        if (isSignupQuiz && onComplete) {
             onComplete(answers);
             return;
         }
+
+        setIsSubmitting(true);
 
         setIsSubmitting(true);
         try {
@@ -127,6 +152,7 @@ export default function SkillAssessmentForm({ onComplete, questions: customQuest
                 }
                 toast({ title: "Roadmap Generated!", description: `Your personalized plan for ${role} is ready.` });
             } else { throw new Error("Could not generate roadmap."); }
+            } else { throw new Error("Could not generate roadmap."); }
         } catch(err) {
              toast({ title: "Error", description: "Failed to generate roadmap. Please try again.", variant: "destructive" });
              setSkillAssessmentState({ selectedRole: null });
@@ -150,6 +176,7 @@ export default function SkillAssessmentForm({ onComplete, questions: customQuest
             </CardHeader>
             <CardContent className="min-h-[300px]">
                 <AnimatePresence mode="wait">
+                    <motion.div key={currentQuestionIndex} variants={panelVariants} initial="hidden" animate="visible" exit="exit" transition={{ duration: 0.3 }}>
                     <motion.div key={currentQuestionIndex} variants={panelVariants} initial="hidden" animate="visible" exit="exit" transition={{ duration: 0.3 }}>
                         <h3 className="text-lg font-semibold mb-4">{currentQuestion.question || currentQuestion.statement}</h3>
                         {renderInput()}
@@ -201,6 +228,9 @@ export default function SkillAssessmentForm({ onComplete, questions: customQuest
             case 'mcq': return (<div className="space-y-2"><RadioGroup value={typeof answer === 'object' ? answer.selected : answer} onValueChange={(value) => { if (value === 'Other') { handleAnswer({ selected: 'Other', text: '' }); } else { handleAnswer(value); } }} className="space-y-2">{currentQuestion.options?.map(option => (<div key={option} className="flex items-center space-x-2 p-3 rounded-lg border has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5 transition-colors"><RadioGroupItem value={option} id={option} /><Label htmlFor={option} className="flex-1 cursor-pointer">{option}</Label></div>))}</RadioGroup>{isOtherSelected && (<motion.div initial={{opacity: 0, y: -10}} animate={{opacity: 1, y: 0}} className="pt-2"><Input placeholder="Please specify" value={typeof answer === 'object' ? answer.text : ''} onChange={(e) => handleAnswer({ selected: 'Other', text: e.target.value })} className="mt-2" required /></motion.div>)}</div>);
             case 'text': return <Textarea placeholder="Your answer here..." value={answers[currentQuestion.id] || ''} onChange={e => handleAnswer(e.target.value)} />;
             case 'likert': return (<div className="flex justify-around items-end pt-4">{likertOptions.map(opt => (<button key={opt.value} onClick={() => handleAnswer(opt.value)} className={cn("text-center group transition-transform hover:scale-110", answers[currentQuestion.id] === opt.value ? 'scale-110' : 'opacity-60 hover:opacity-100')}><div className={cn("text-4xl rounded-full p-2 transition-all")}>{opt.emoji}</div><div className={cn("text-xs font-medium text-muted-foreground mt-2", answers[currentQuestion.id] === opt.value && 'text-primary underline')}>{opt.label}</div></button>))}</div>);
+            case 'mcq': return (<div className="space-y-2"><RadioGroup value={typeof answer === 'object' ? answer.selected : answer} onValueChange={(value) => { if (value === 'Other') { handleAnswer({ selected: 'Other', text: '' }); } else { handleAnswer(value); } }} className="space-y-2">{currentQuestion.options?.map(option => (<div key={option} className="flex items-center space-x-2 p-3 rounded-lg border has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5 transition-colors"><RadioGroupItem value={option} id={option} /><Label htmlFor={option} className="flex-1 cursor-pointer">{option}</Label></div>))}</RadioGroup>{isOtherSelected && (<motion.div initial={{opacity: 0, y: -10}} animate={{opacity: 1, y: 0}} className="pt-2"><Input placeholder="Please specify" value={typeof answer === 'object' ? answer.text : ''} onChange={(e) => handleAnswer({ selected: 'Other', text: e.target.value })} className="mt-2" required /></motion.div>)}</div>);
+            case 'text': return <Textarea placeholder="Your answer here..." value={answers[currentQuestion.id] || ''} onChange={e => handleAnswer(e.target.value)} />;
+            case 'likert': return (<div className="flex justify-around items-end pt-4">{likertOptions.map(opt => (<button key={opt.value} onClick={() => handleAnswer(opt.value)} className={cn("text-center group transition-transform hover:scale-110", answers[currentQuestion.id] === opt.value ? 'scale-110' : 'opacity-60 hover:opacity-100')}><div className={cn("text-4xl rounded-full p-2 transition-all")}>{opt.emoji}</div><div className={cn("text-xs font-medium text-muted-foreground mt-2", answers[currentQuestion.id] === opt.value && 'text-primary underline')}>{opt.label}</div></button>))}</div>);
             default: return null;
         }
     };
@@ -226,6 +256,8 @@ export default function SkillAssessmentForm({ onComplete, questions: customQuest
     
     return (
       <>
+        <motion.h1 className="text-2xl md:text-3xl font-bold font-headline text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>AI Skill-set Finder</motion.h1>
+        <Card className="max-w-6xl mx-auto shadow-sm">{!isFinished ? renderQuiz() : renderResults()}</Card>
         <motion.h1 className="text-2xl md:text-3xl font-bold font-headline text-center" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>AI Skill-set Finder</motion.h1>
         <Card className="max-w-6xl mx-auto shadow-sm">{!isFinished ? renderQuiz() : renderResults()}</Card>
       </>
