@@ -52,13 +52,17 @@ Navigating the early stages of a career is often a confusing and stressful exper
 
 -   **🤖 AI Mock Interview:** A realistic voice-enabled interview simulation tailored to a specific job role and difficulty level. After the session, the user receives a comprehensive evaluation of their performance, including a soft-skill score and detailed feedback.
 
--   **💬 AI Career Advisor Chat:** A context-aware chatbot that uses the user's saved resume and profile data to provide personalized advice on demand.
+-   **💬 AI Career Advisor Chat:** A context-aware chatbot. Now features a ✨ **Personalized Mode** that, with a single click, pulls the user's complete profile, skills, and past evaluation results to provide deeply holistic and tailored guidance.
 
--   **📊 Live Job Trends:** Fetches and displays real-time job market data using the Adzuna API, helping users understand which career fields are currently in high demand.
+-   **📊 Live Job Market Explorer:** An interactive dashboard powered by a robust data pipeline.
+    -   **Data Pipeline:** A Google Apps Script automatically fetches data daily from the **Adzuna API** and stores it in **Google Sheets**.
+    -   **Visualization:** An embedded **Google Looker Studio** dashboard visualizes this data, showing trends for top job categories, salary distributions, geographic hotspots, and top hiring companies.
+
+-   **📰 Trending Career News:** A homepage widget that pulls the latest articles related to career trends, the job market, and hiring from the **GNews API**, keeping users informed.
 
 -   **👥 Community Platform:** A dedicated social space for users to create posts, share professional insights, follow peers, and build a supportive network.
 
--   **🎙️ Disha Talks:** An curated content hub featuring inspirational articles and mock podcasts (success stories, expert interviews) on career growth and industry trends.
+-   **🎙️ Disha Talks:** A curated content hub featuring inspirational articles and mock podcasts (success stories, expert interviews) on career growth and industry trends.
 
 -   **👤 Comprehensive User Profile:** A central dashboard that stores a user's personal details, chosen career path, and a complete history of all their assessments, resume reviews, and mock interviews, creating a persistent record of their career journey.
 
@@ -89,8 +93,15 @@ This project is built with a modern, scalable, and type-safe technology stack.
     -   **API:** Next.js API Routes
 
 -   **Database & Authentication:**
-    -   **Database:** [Firebase Realtime Database](https://firebase.google.com/docs/database) (for user profiles, chat history, and evaluation results)
+    -   **Database:** [Firebase Realtime Database](https://firebase.google.com/docs/database)
     -   **Authentication:** [Firebase Authentication](https://firebase.google.com/docs/auth)
+
+-   **Data Pipeline & Business Intelligence:**
+    -   **Job Data API:** [Adzuna API](https://developer.adzuna.com/)
+    -   **News API:** [GNews API](https://gnews.io/)
+    -   **Automation:** [Google Apps Script](https://www.google.com/script/start/)
+    -   **Data Storage:** [Google Sheets](https://www.google.com/sheets/about/)
+    -   **Dashboarding:** [Google Looker Studio](https://lookerstudio.google.com/)
 
 -   **Deployment:**
     -   **Hosting:** [Firebase Hosting](https://firebase.google.com/docs/hosting)
@@ -112,7 +123,7 @@ The core intelligence of this application is powered by **Genkit**, which orches
     -   Manages a multi-turn conversational interview. It maintains the history of the conversation and uses the user's resume context to ask relevant questions. At the end of the interview, it generates a final, structured JSON evaluation of the user's performance.
 
 -   **`career-advice-chatbot.ts`:**
-    -   A straightforward flow that takes a user's question and resume text to provide a context-aware, personalized response.
+    -   Takes a user's question and a comprehensive JSON object of their profile data (including past evaluations) to provide deeply personalized and context-aware responses.
 
 ---
 
@@ -141,7 +152,7 @@ To get a local copy up and running, follow these simple steps.
 
 3.  **Set up environment variables:**
     -   Create a file named `.env` in the root of the project.
-    -   Add the following keys, filling in your own credentials from your Firebase and Adzuna projects.
+    -   Add the following keys, filling in your own credentials from your Firebase, GNews, and Adzuna projects.
     ```env
     # Firebase Configuration
     NEXT_PUBLIC_FIREBASE_API_KEY=
@@ -151,8 +162,11 @@ To get a local copy up and running, follow these simple steps.
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
     NEXT_PUBLIC_FIREBASE_APP_ID=
     NEXT_PUBLIC_FIREBASE_DATABASE_URL=
+    
+    # GNews API (for Trending News Widget)
+    GNEWS_API_KEY=
 
-    # Adzuna API (for Job Trends)
+    # Adzuna API (Note: These are used in the Google Apps Script, not directly in the Next.js app)
     ADZUNA_APP_ID=
     ADZUNA_APP_KEY=
 
@@ -193,7 +207,7 @@ Disha-Darshak-AI/
 │   ├── lib/                # Utility functions, constants, Firebase config
 │   └── types/              # Global TypeScript types
 ├── docs/                   # Project documentation (e.g., blueprint.md)
-├── public/                 # Static assets
+├── public/                 # Static assets (e.g., dashboard preview images)
 └── ...                     # Config files (next.config.js, tailwind.config.ts, etc.)
 ```
 
