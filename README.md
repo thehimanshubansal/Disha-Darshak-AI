@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![MVP Link](https://img.shields.io/badge/MVP-Live-green)](https://disha-darshak-ai--disha-darshak.us-central1.hosted.app/)
-[![YouTube](https://img.shields.io/badge/You-Tube-red)](https://youtu.be/KxqINxy5NtA)
+[![YouTube](https://img.shields.io/badge/You-Tube-red)](https://youtu.be/u5OXGKNIeBQ)
 
 **Disha Darshak AI** is a comprehensive, AI-driven web application designed to guide students and early-career professionals through the complexities of career planning. It transforms overwhelming choices into a clear, personalized, and actionable journey, leveraging the power of Google's Vertex AI to provide expert-level guidance at scale.
 
