@@ -18,7 +18,6 @@
 - [The Problem We Solve](#-the-problem-we-solve)
 - [Key Features](#-key-features)
 - [Live Demo](#-live-demo)
-- [Screenshots](#-screenshots)
 - [Technology Stack](#-technology-stack)
 - [🧠 AI & Genkit Integration](#-ai--genkit-integration)
 - [Getting Started](#-getting-started)
